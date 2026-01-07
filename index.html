@@ -98,18 +98,22 @@ button, label, span {
 
 <input id="expenseAmount" type="number" class="form-control mb-2" placeholder="Amount ₹">
 
-<select id="paidBy" class="form-select mb-2"></select>
+<select id="paidBy" class="form-select mb-2" onchange="lockPaidMember()"></select>
 
 <div class="card p-2 mb-2 split-card" onclick="selectSplit('equal')">
   <div class="form-check">
-    <input class="form-check-input" type="radio" name="splitType" id="splitEqual" value="equal" checked>
-    <label class="form-check-label fw-semibold" for="splitEqual">Split equally</label>
+    <input class="form-check-input" type="radio"
+           name="splitType" id="splitEqual" value="equal" checked>
+    <label class="form-check-label fw-semibold" for="splitEqual">
+      Split equally
+    </label>
   </div>
 </div>
 
 <div class="card p-2 split-card" onclick="selectSplit('custom')">
   <div class="form-check">
-    <input class="form-check-input" type="radio" name="splitType" id="splitCustom" value="custom">
+    <input class="form-check-input" type="radio"
+           name="splitType" id="splitCustom" value="custom">
     <label class="form-check-label fw-semibold" for="splitCustom">
       Split selected members (custom amount)
     </label>
@@ -118,8 +122,14 @@ button, label, span {
 
 <div id="customMembers" class="mt-2"></div>
 
-<button class="btn btn-success w-100 mt-3" onclick="saveExpense()">Save Expense</button>
-<button class="btn btn-outline-secondary w-100 mt-2 d-none" id="cancelEditBtn" onclick="cancelEdit()">Cancel Edit</button>
+<button class="btn btn-success w-100 mt-3" onclick="saveExpense()">
+  Save Expense
+</button>
+
+<button class="btn btn-outline-secondary w-100 mt-2 d-none"
+        id="cancelEditBtn" onclick="cancelEdit()">
+  Cancel Edit
+</button>
 </div>
 
 <!-- EXPENSE LIST -->
@@ -199,7 +209,30 @@ function deleteExpense(index){
   rebuildAll();                // 🔥 UI + owes refresh
 }
 
+function selectSplit(type){
+  document.getElementById("splitEqual").checked = type === "equal";
+  document.getElementById("splitCustom").checked = type === "custom";
 
+  if(type === "custom"){
+    customMembers.style.display = "block";
+    document.querySelectorAll('#customMembers input')
+      .forEach(c => c.checked = true);
+    lockPaidMember();
+  } else {
+    customMembers.style.display = "none";
+  }
+}
+
+function saveExpense(){
+  addExpense(); // or your existing expense save logic
+}
+
+function cancelEdit(){
+  editIndex = -1;
+  expenseFormTitle.innerText = "Add Expense";
+  cancelEditBtn.classList.add("d-none");
+}
+  
 function deleteMember(i){
   let n=members[i];
   if(!confirm(`Delete ${n}?`))return;
@@ -588,3 +621,4 @@ initOwes();renderMembers();renderExpenses();renderMatrix();renderSpending();rend
 </script>
 </body>
 </html>
+
