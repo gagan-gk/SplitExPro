@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+<meta charset="UTF-8">
+<title>Expense Splitter – Final</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<style>
+  /* Settlement group header – theme safe */
+.settle-header {
+  background-color: var(--bs-secondary-bg);
+  color: var(--bs-body-color);
+  font-weight: 600;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(0,123,255,0.25), transparent 40%),
+    radial-gradient(circle at 80% 30%, rgba(255,0,150,0.25), transparent 40%),
+    radial-gradient(circle at 50% 80%, rgba(0,255,200,0.25), transparent 40%),
+    linear-gradient(180deg, #0f2027, #203a43, #2c5364);
+  background-attachment: scroll;   /* 🔥 scrolls with page */
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.2);
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.25),
+    inset 0 1px 0 rgba(255,255,255,0.15);
+}
+input,select,button{border-radius:12px!important}
+.table{font-size:14px}
+.split-card{cursor:pointer}
+.split-card:hover{background:rgba(255,255,255,0.05)}
+#customMembers{overflow:hidden;max-height:0;opacity:0;transition:.3s}
+#customMembers.show{max-height:600px;opacity:1}
+.split-item{cursor:pointer}
+/* === THEME SAFE TEXT COLORS === */
+
+body {
+  color: var(--bs-body-color);
+  background-color: var(--bs-body-bg);
+}
+
+.card,
+.list-group-item,
+.table,
+.form-control,
+.form-select {
+  color: var(--bs-body-color);
+  background-color: var(--bs-body-bg);
+}
+
+.table th,
+.table td {
+  color: var(--bs-body-color);
+}
+
+.form-check-label,
+.split-item span {
+  color: var(--bs-body-color);
+}
+
+.text-muted {
+  color: var(--bs-secondary-color) !important;
+}
+
+/* Icons / emojis alignment */
+button, label, span {
+  color: inherit;
+}
+
+.table th,
+.table td {
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(8px);
+}
+
+
+</style>
+</head>
+
+<body>
+<div class="container my-3">
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4>💸 Expense Splitter</h4>
+  <button class="btn btn-outline-secondary btn-sm" onclick="toggleTheme()">🌙 / ☀️</button>
+</div>
+
+<!-- MEMBERS -->
+<div class="card p-3 mb-3">
+<h6>Add Member</h6>
+<div class="input-group">
+<input id="memberInput" class="form-control" placeholder="Member name"
+ onkeydown="if(event.key==='Enter')addMember()">
+<button class="btn btn-primary" onclick="addMember()">Add</button>
+</div>
+<ul class="list-group mt-2" id="memberList"></ul>
+</div>
+
+<!-- ADD / EDIT EXPENSE -->
+<div class="card p-3 mb-3">
+<h6 id="expenseFormTitle">Add Expense</h6>
+
+<select class="form-select mb-2" id="expenseType" onchange="renderTypeFields()">
+  <option value="">Expense type</option>
+  <option value="Travel">🚕 Travel</option>
+  <option value="Food">🍔 Food</option>
+  <option value="Other">🛒 Other</option>
+</select>
+
+<div id="typeFields"></div>
+
+<input id="expenseAmount" type="number" class="form-control mb-2" placeholder="Amount ₹">
+
+<select id="paidBy" class="form-select mb-2"></select>
+
+<div class="card p-2 mb-2 split-card" onclick="selectSplit('equal')">
+  <div class="form-check">
+    <input class="form-check-input" type="radio" name="splitType" id="splitEqual" value="equal" checked>
+    <label class="form-check-label fw-semibold" for="splitEqual">Split equally</label>
+  </div>
+</div>
+
+<div class="card p-2 split-card" onclick="selectSplit('custom')">
+  <div class="form-check">
+    <input class="form-check-input" type="radio" name="splitType" id="splitCustom" value="custom">
+    <label class="form-check-label fw-semibold" for="splitCustom">
+      Split selected members (custom amount)
+    </label>
+  </div>
+</div>
+
+<div id="customMembers" class="mt-2"></div>
+
+<button class="btn btn-success w-100 mt-3" onclick="saveExpense()">Save Expense</button>
+<button class="btn btn-outline-secondary w-100 mt-2 d-none" id="cancelEditBtn" onclick="cancelEdit()">Cancel Edit</button>
+</div>
+
+<!-- EXPENSE LIST -->
+<div class="card p-3 mb-3">
+<h6>Expenses</h6>
+<div class="table-responsive">
+<table class="table table-sm" id="expenseTable"></table>
+</div>
+</div>
+
+<!-- FINAL SETTLEMENT -->
+<div class="card p-3 mb-3">
+<h6>Final Settlement</h6>
+<div class="table-responsive">
+<table class="table table-sm" id="matrixTable"></table>
+</div>
+</div>
+
+<!-- INDIVIDUAL SPENDING -->
+<div class="card p-3 mb-3">
+<h6>Total Individual Spending</h6>
+<table class="table table-sm" id="spendingTable"></table>
+</div>
+
+<!-- PIE -->
+<div class="card p-3 mb-3">
+<h6>Spending Analysis</h6>
+<div class="d-flex justify-content-center">
+  <canvas id="spendPie" style="max-width:220px;max-height:220px"></canvas>
+</div>
+</div>
+
+<div class="d-flex gap-2">
+<button class="btn btn-outline-success w-50" onclick="exportExcel()">📤 Export Excel</button>
+<button class="btn btn-outline-danger w-50" onclick="resetAll()">Reset All</button>
+</div>
+
+</div>
+
+<script>
+/* ================= DATA ================= */
+let members = JSON.parse(localStorage.getItem("members")) || [];
+let expenses = JSON.parse(localStorage.getItem("expenses")) || [];
+let owes = {};
+let pieChart;
+let editIndex = -1;
+
+/* ================= THEME ================= */
+function toggleTheme(){
+  let h=document.documentElement;
+  let t=h.getAttribute("data-bs-theme")==="dark"?"light":"dark";
+  h.setAttribute("data-bs-theme",t);
+  localStorage.setItem("theme",t);
+}
+document.documentElement.setAttribute("data-bs-theme",localStorage.getItem("theme")||"dark");
+
+/* ================= STORAGE ================= */
+function save(){
+  localStorage.setItem("members",JSON.stringify(members));
+  localStorage.setItem("expenses",JSON.stringify(expenses));
+}
+
+/* ================= MEMBERS ================= */
+function addMember(){
+  let n=memberInput.value.trim();
+  if(!n||members.includes(n))return;
+  members.push(n);
+  memberInput.value="";
+  rebuildAll();
+}
+
+function deleteExpense(index){
+  if(!confirm("Delete this expense?")) return;
+
+  expenses.splice(index, 1);   // 🔥 actual delete
+  editIndex = -1;              // safety: exit edit mode
+  rebuildAll();                // 🔥 UI + owes refresh
+}
+
+
+function deleteMember(i){
+  let n=members[i];
+  if(!confirm(`Delete ${n}?`))return;
+  members.splice(i,1);
+  expenses.forEach(e=>{
+    e.splits = e.splits.filter(s=>s.member!==n);
+  });
+  expenses = expenses.filter(e=>e.paidBy!==n);
+  rebuildAll();
+}
+
+function cancelEdit(){
+  editIndex = -1;              // 🔴 MOST IMPORTANT
+  resetExpenseForm();          // clear form
+}
+
+function resetExpenseForm(){
+  // Reset edit state
+  editIndex = -1;
+
+  // UI text
+  document.getElementById("expenseFormTitle").innerText = "Add Expense";
+  document.getElementById("cancelEditBtn").classList.add("d-none");
+
+  // Clear fields
+  expenseType.value = "";
+  typeFields.innerHTML = "";
+  expenseAmount.value = "";
+  paidBy.selectedIndex = 0;
+
+  // Reset split
+  splitEqual.checked = true;
+  splitCustom.checked = false;
+  toggleSplit();
+
+  // Clear custom split
+  document.querySelectorAll(".split-member").forEach(cb=>{
+    cb.checked = false;
+  });
+  document.querySelectorAll(".split-amount").forEach(ip=>{
+    ip.value = "";
+    ip.disabled = true;
+  });
+}
+
+
+function renderMembers()
+{
+  memberList.innerHTML=members.map((m,i)=>`
+    <li class="list-group-item d-flex justify-content-between">
+      ${m}
+      <button class="btn btn-sm btn-outline-danger" onclick="deleteMember(${i})">🗑</button>
+    </li>`).join("");
+  paidBy.innerHTML=members.map(m=>`<option>${m}</option>`).join("");
+
+  customMembers.innerHTML=members.map(m=>`
+    <label class="d-flex align-items-center gap-2 mb-2 split-item">
+      <input class="form-check-input split-member" type="checkbox" value="${m}">
+      <span class="fw-medium">${m}</span>
+      <input type="number" class="form-control form-control-sm ms-auto split-amount"
+             data-member="${m}" placeholder="₹"
+             style="max-width:100px" disabled>
+    </label>`).join("");
+
+  document.querySelectorAll(".split-member").forEach(cb=>
+  {
+    cb.onchange=()=>{
+      let amt=document.querySelector(`.split-amount[data-member="${cb.value}"]`);
+      amt.disabled=!cb.checked;
+      if(!cb.checked)amt.value="";
+    };
+  });
+
+}
+/* ================= SPLIT UX ================= */
+function selectSplit(t){
+  document.getElementById(t==="equal"?"splitEqual":"splitCustom").checked=true;
+  toggleSplit();
+}
+function toggleSplit(){
+  customMembers.classList.toggle("show",splitCustom.checked);
+}
+
+/* ================= EXPENSE TYPE FIELDS ================= */
+function renderTypeFields(){
+  const t = expenseType.value;
+  const today = new Date().toISOString().split("T")[0];
+  typeFields.innerHTML = "";
+  if(!t) return;
+
+  if(t==="Travel"){
+    typeFields.innerHTML=`
+      <select class="form-select mb-2" id="travelMode">
+        <option>Bus</option><option>Train</option>
+        <option>Flight</option><option>Car</option>
+        <option value="Other">Other</option>
+      </select>
+      <input class="form-control mb-2 d-none" id="travelOther" placeholder="Other transport">
+      <input class="form-control mb-2" id="fromPlace" placeholder="From">
+      <input class="form-control mb-2" id="toPlace" placeholder="To">
+      <input type="date" class="form-control mb-2" id="travelDate" value="${today}">
+    `;
+    const m=document.getElementById("travelMode");
+    const o=document.getElementById("travelOther");
+    m.onchange=()=>o.classList.toggle("d-none",m.value!=="Other");
+  }
+
+  else if(t==="Food"){
+    typeFields.innerHTML=`
+      <input class="form-control mb-2" id="foodPlace" placeholder="Place">
+      <select class="form-select mb-2" id="foodType">
+        <option>Breakfast</option><option>Lunch</option>
+        <option>Dinner</option><option>Snacks</option>
+        <option value="Other">Other</option>
+      </select>
+      <input class="form-control mb-2 d-none" id="foodOther" placeholder="Other food">
+      <input type="date" class="form-control mb-2" id="foodDate" value="${today}">
+    `;
+    const f=document.getElementById("foodType");
+    const o=document.getElementById("foodOther");
+    f.onchange=()=>o.classList.toggle("d-none",f.value!=="Other");
+  }
+
+  else if(t==="Other"){
+    typeFields.innerHTML=`
+      <select class="form-select mb-2" id="otherType">
+        <option>Shopping</option><option>Utilities</option>
+        <option>Gifts</option><option value="Other">Other</option>
+      </select>
+      <input class="form-control mb-2 d-none" id="otherText" placeholder="Specify">
+      <input class="form-control mb-2" id="otherPlace" placeholder="Place">
+      <input type="date" class="form-control mb-2" id="otherDate" value="${today}">
+    `;
+    const t1=document.getElementById("otherType");
+    const o=document.getElementById("otherText");
+    t1.onchange=()=>o.classList.toggle("d-none",t1.value!=="Other");
+  }
+}
+
+/* ================= ADD / EDIT EXPENSE ================= */
+
+function saveExpense(){
+  let amount=+expenseAmount.value;
+  let paid=paidBy.value;
+  let type=expenseType.value;
+  if(!amount||!paid||!type){alert("Fill all fields");return;}
+
+  let details="";
+  if(type==="Travel"){
+    let m=travelMode.value==="Other"?travelOther.value:travelMode.value;
+    details=`${m} | ${fromPlace.value} → ${toPlace.value} | ${travelDate.value}`;
+  }
+  if(type==="Food"){
+    let f=foodType.value==="Other"?foodOther.value:foodType.value;
+    details=`${foodPlace.value} | ${f} | ${foodDate.value}`;
+  }
+  if(type==="Other"){
+    let o=otherType.value==="Other"?otherText.value:otherType.value;
+    details=`${o} | ${otherPlace.value} | ${otherDate.value}`;
+  }
+
+  let splits=[];
+  if(splitEqual.checked){
+    let s=amount/members.length;
+    members.forEach(m=>splits.push({member:m,amount:s}));
+  }else{
+    document.querySelectorAll(".split-member:checked").forEach(cb=>{
+      let v=+document.querySelector(`.split-amount[data-member="${cb.value}"]`).value;
+      if(v>0)splits.push({member:cb.value,amount:v});
+    });
+  }
+
+  let obj={paidBy:paid,amount,type,details,splits};
+  if(editIndex>-1){expenses[editIndex]=obj;editIndex=-1;}
+  else expenses.push(obj);
+
+  resetForm();
+  rebuildAll();
+}
+function editExpense(index){
+  const e = expenses[index];
+  editIndex = index;
+
+  // Change form state
+  document.getElementById("expenseFormTitle").innerText = "Edit Expense";
+  document.getElementById("cancelEditBtn").classList.remove("d-none");
+
+  // Prefill basic fields
+  expenseType.value = e.type;
+  renderTypeFields(); // important
+  expenseAmount.value = e.amount;
+  paidBy.value = e.paidBy;
+
+  // Prefill split
+  if(e.splits.length === members.length){
+    selectSplit("equal");
+  }else{
+    selectSplit("custom");
+    e.splits.forEach(s=>{
+      const cb = document.querySelector(
+        `.split-member[value="${s.member}"]`
+      );
+      const ip = document.querySelector(
+        `.split-amount[data-member="${s.member}"]`
+      );
+      if(cb && ip){
+        cb.checked = true;
+        ip.disabled = false;
+        ip.value = s.amount;
+      }
+    });
+  }
+
+  // Prefill type-specific fields
+  setTimeout(()=>{
+    if(e.type === "Travel"){
+      const parts = e.details.split("|").map(x=>x.trim());
+      if(travelMode){
+        travelMode.value = parts[0];
+        if(travelMode.value === "Other"){
+          travelOther.classList.remove("d-none");
+          travelOther.value = parts[0];
+        }
+      }
+      fromPlace.value = parts[1]?.split("→")[0]?.trim() || "";
+      toPlace.value   = parts[1]?.split("→")[1]?.trim() || "";
+      travelDate.value = parts[2] || "";
+    }
+    if(e.type === "Food"){
+      const parts = e.details.split("|").map(x=>x.trim());
+      foodPlace.value = parts[0] || "";
+      foodType.value  = parts[1] || "";
+      foodDate.value  = parts[2] || "";
+    }
+    if(e.type === "Other"){
+      const parts = e.details.split("|").map(x=>x.trim());
+      otherType.value  = parts[0] || "";
+      otherPlace.value = parts[1] || "";
+      otherDate.value  = parts[2] || "";
+    }
+  },0);
+}
+
+function resetForm(){
+  expenseType.value="";
+  typeFields.innerHTML="";
+  expenseAmount.value="";
+  splitEqual.checked=true;
+  toggleSplit();
+}
+
+/* ================= OWES + RENDER ================= */
+function initOwes(){
+  owes={};
+  members.forEach(a=>{owes[a]={};members.forEach(b=>owes[a][b]=0);});
+  expenses.forEach(e=>{
+    e.splits.forEach(s=>{
+      if(s.member!==e.paidBy)owes[s.member][e.paidBy]+=s.amount;
+    });
+    members.forEach(a=>members.forEach(b=>{
+      let m=Math.min(owes[a][b],owes[b][a]);
+      owes[a][b]-=m;owes[b][a]-=m;
+    }));
+  });
+}
+function renderExpenses(){
+  expenseTable.innerHTML =
+    `<tr>
+      <th>Type</th>
+      <th>Details</th>
+      <th>Paid By</th>
+      <th>₹</th>
+      <th>Action</th>
+    </tr>` +
+    expenses.map((e, i) => `
+      <tr>
+        <td>${e.type}</td>
+        <td>${e.details}</td>
+        <td>${e.paidBy}</td>
+        <td>${e.amount}</td>
+        <td>
+          <button class="btn btn-sm btn-outline-primary"
+                  onclick="editExpense(${i})">✏️</button>
+          <button class="btn btn-sm btn-outline-danger"
+                  onclick="deleteExpense(${i})">🗑</button>
+        </td>
+      </tr>
+    `).join("");
+}
+
+
+function renderMatrix(){
+  let h="";
+  members.forEach(f=>{
+    let r="";
+    members.forEach(t=>{
+      if(f!==t&&owes[f][t]>0)r+=`<tr><td></td><td>${t}</td><td>₹${owes[f][t].toFixed(2)}</td></tr>`;
+    });
+if(r) h += `<tr class="settle-header">
+  <th colspan="3">${f} should pay</th>
+</tr>${r}`;
+  });
+  matrixTable.innerHTML=`<tr><th>From</th><th>To</th><th>₹</th></tr>`+(h||"<tr><td colspan=3>No dues 🎉</td></tr>");
+}
+function renderSpending(){
+  let m={};members.forEach(x=>m[x]=0);
+  expenses.forEach(e=>m[e.paidBy]+=e.amount);
+  spendingTable.innerHTML=`<tr><th>Name</th><th>Spent ₹</th></tr>`+
+    Object.entries(m).map(([k,v])=>`<tr><td>${k}</td><td>₹${v.toFixed(2)}</td></tr>`).join("");
+}
+function renderPie(){
+  let spendMap = {};
+  members.forEach(m => spendMap[m] = 0);
+  expenses.forEach(e => spendMap[e.paidBy] += e.amount);
+
+  const isDark =
+    document.documentElement.getAttribute("data-bs-theme") === "dark";
+
+  const textColor = isDark ? "#e9ecef" : "#212529";
+
+  if(pieChart) pieChart.destroy();
+
+  pieChart = new Chart(spendPie, {
+    type: "doughnut",
+    data: {
+      labels: Object.keys(spendMap),
+      datasets: [{
+        data: Object.values(spendMap),
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      cutout: "70%",
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: {
+            color: textColor,
+            boxWidth: 10
+          }
+        },
+        tooltip: {
+          titleColor: textColor,
+          bodyColor: textColor
+        }
+      }
+    }
+  });
+}
+
+/* ================= EXCEL EXPORT ================= */
+function exportExcel(){
+  let wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(expenses),"Expenses");
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(
+    Object.entries(renderSpendMap()).map(([k,v])=>({Name:k,Spent:v}))
+  ),"Spending");
+  let settle=[];
+  members.forEach(f=>members.forEach(t=>{
+    if(f!==t&&owes[f][t]>0)settle.push({From:f,To:t,Amount:owes[f][t]});
+  }));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(settle),"Settlement");
+  XLSX.writeFile(wb,"ExpenseSplitter.xlsx");
+}
+function renderSpendMap(){
+  let m={};members.forEach(x=>m[x]=0);
+  expenses.forEach(e=>m[e.paidBy]+=e.amount);
+  return m;
+}
+
+/* ================= MAIN ================= */
+function rebuildAll(){
+  save(); initOwes(); renderMembers(); renderExpenses(); renderMatrix(); renderSpending(); renderPie();
+}
+
+function resetAll(){
+  if(confirm("Clear all data?")){
+    localStorage.clear();
+    members=[];expenses=[];rebuildAll();
+  }
+}
+
+initOwes();renderMembers();renderExpenses();renderMatrix();renderSpending();renderPie();
+</script>
+</body>
+</html>
