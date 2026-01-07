@@ -2,7 +2,7 @@
 <html lang="en" data-bs-theme="dark">
 <head>
 <meta charset="UTF-8">
-<title>Expense Splitter – Final</title>
+<title>Expense Splitter</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -10,18 +10,69 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 <style>
-.settle-header{
-  background-color:var(--bs-secondary-bg);
-  font-weight:600;
+/* ===== GLOBAL BACKGROUND (SCROLLING) ===== */
+body{
+  min-height:100vh;
+  font-family: system-ui,-apple-system,BlinkMacSystemFont,
+               "Segoe UI",Roboto,
+               "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",
+               sans-serif;
+
+  background:
+    radial-gradient(circle at 20% 20%, rgba(0,123,255,0.25), transparent 40%),
+    radial-gradient(circle at 80% 30%, rgba(255,0,150,0.25), transparent 40%),
+    radial-gradient(circle at 50% 80%, rgba(0,255,200,0.25), transparent 40%),
+    linear-gradient(180deg,#0f2027,#203a43,#2c5364);
+
+  background-attachment: scroll;
+  background-size: cover;
+  color: var(--bs-body-color);
 }
-body{background:var(--bs-body-bg);color:var(--bs-body-color)}
-.card{border-radius:16px}
+
+/* ===== GLASS CARD ===== */
+.card{
+  background: rgba(255,255,255,0.12);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,0.2);
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.25),
+    inset 0 1px 0 rgba(255,255,255,0.15);
+}
+
+/* Theme safe */
+[data-bs-theme="dark"] .card{
+  background: rgba(20,20,20,0.6);
+}
+[data-bs-theme="light"] .card{
+  background: rgba(255,255,255,0.65);
+}
+
 input,select,button{border-radius:12px!important}
 .table{font-size:14px}
+
+/* Split UI */
 .split-card{cursor:pointer}
-.split-card:hover{background:rgba(255,255,255,0.05)}
-#customMembers{max-height:0;opacity:0;overflow:hidden;transition:.3s}
-#customMembers.show{max-height:600px;opacity:1}
+.split-card:hover{background:rgba(255,255,255,0.08)}
+
+#customMembers{
+  max-height:0;
+  opacity:0;
+  overflow:hidden;
+  transition:.3s;
+}
+#customMembers.show{
+  max-height:600px;
+  opacity:1;
+}
+
+/* Settlement header (theme safe) */
+.settle-header{
+  background-color: var(--bs-secondary-bg);
+  color: var(--bs-body-color);
+  font-weight:600;
+}
 </style>
 </head>
 
@@ -44,7 +95,7 @@ input,select,button{border-radius:12px!important}
 <ul class="list-group mt-2" id="memberList"></ul>
 </div>
 
-<!-- ADD / EDIT EXPENSE -->
+<!-- EXPENSE FORM -->
 <div class="card p-3 mb-3">
 <h6 id="expenseFormTitle">Add Expense</h6>
 
@@ -58,30 +109,22 @@ input,select,button{border-radius:12px!important}
 <div id="typeFields"></div>
 
 <input id="expenseAmount" type="number" class="form-control mb-2" placeholder="Amount ₹">
-
 <select id="paidBy" class="form-select mb-2"></select>
 
 <div class="card p-2 mb-2 split-card" onclick="selectSplit('equal')">
-  <div class="form-check">
-    <input class="form-check-input" type="radio" name="splitType"
-           id="splitEqual" value="equal" checked>
-    <label class="form-check-label fw-semibold">Split equally</label>
-  </div>
+  <input type="radio" id="splitEqual" name="splitType" checked>
+  <label for="splitEqual">Split equally</label>
 </div>
 
-<div class="card p-2 split-card" onclick="selectSplit('custom')">
-  <div class="form-check">
-    <input class="form-check-input" type="radio" name="splitType"
-           id="splitCustom" value="custom">
-    <label class="form-check-label fw-semibold">Split selected members</label>
-  </div>
+<div class="card p-2 mb-2 split-card" onclick="selectSplit('custom')">
+  <input type="radio" id="splitCustom" name="splitType">
+  <label for="splitCustom">Split selected members</label>
 </div>
 
-<div id="customMembers" class="mt-2"></div>
+<div id="customMembers"></div>
 
 <button class="btn btn-success w-100 mt-3" onclick="saveExpense()">Save Expense</button>
-<button class="btn btn-outline-secondary w-100 mt-2 d-none"
-        id="cancelEditBtn" onclick="cancelEdit()">Cancel Edit</button>
+<button class="btn btn-outline-secondary w-100 mt-2 d-none" id="cancelEditBtn" onclick="cancelEdit()">Cancel Edit</button>
 </div>
 
 <!-- EXPENSE LIST -->
@@ -90,7 +133,7 @@ input,select,button{border-radius:12px!important}
 <table class="table table-sm" id="expenseTable"></table>
 </div>
 
-<!-- FINAL SETTLEMENT -->
+<!-- SETTLEMENT -->
 <div class="card p-3 mb-3">
 <h6>Final Settlement</h6>
 <table class="table table-sm" id="matrixTable"></table>
@@ -102,10 +145,10 @@ input,select,button{border-radius:12px!important}
 <table class="table table-sm" id="spendingTable"></table>
 </div>
 
-<!-- PIE -->
-<div class="card p-3 mb-3">
+<!-- GRAPH -->
+<div class="card p-3 mb-3 text-center">
 <h6>Spending Analysis</h6>
-<canvas id="spendPie" style="max-width:240px"></canvas>
+<canvas id="spendPie" style="max-width:220px"></canvas>
 </div>
 
 <div class="d-flex gap-2">
@@ -116,33 +159,34 @@ input,select,button{border-radius:12px!important}
 </div>
 
 <script>
-/* ===== DATA ===== */
+/* ================= DATA ================= */
 let members = JSON.parse(localStorage.getItem("members")) || [];
 let expenses = JSON.parse(localStorage.getItem("expenses")) || [];
 let owes = {};
 let pieChart;
 let editIndex = -1;
 
-/* ===== THEME ===== */
+/* ================= THEME ================= */
 function toggleTheme(){
-  let h=document.documentElement;
-  let t=h.getAttribute("data-bs-theme")==="dark"?"light":"dark";
+  const h=document.documentElement;
+  const t=h.getAttribute("data-bs-theme")==="dark"?"light":"dark";
   h.setAttribute("data-bs-theme",t);
   localStorage.setItem("theme",t);
+  renderPie();
 }
 document.documentElement.setAttribute(
-  "data-bs-theme", localStorage.getItem("theme") || "dark"
+  "data-bs-theme",localStorage.getItem("theme")||"dark"
 );
 
-/* ===== STORAGE ===== */
+/* ================= STORAGE ================= */
 function save(){
   localStorage.setItem("members",JSON.stringify(members));
   localStorage.setItem("expenses",JSON.stringify(expenses));
 }
 
-/* ===== MEMBERS ===== */
+/* ================= MEMBERS ================= */
 function addMember(){
-  let n=memberInput.value.trim();
+  const n=memberInput.value.trim();
   if(!n||members.includes(n))return;
   members.push(n);
   memberInput.value="";
@@ -150,151 +194,176 @@ function addMember(){
 }
 function deleteMember(i){
   if(!confirm("Delete member?"))return;
-  let n=members[i];
+  const n=members[i];
   members.splice(i,1);
   expenses=expenses.filter(e=>e.paidBy!==n);
   rebuildAll();
 }
 function renderMembers(){
   memberList.innerHTML=members.map((m,i)=>`
-  <li class="list-group-item d-flex justify-content-between">
-    ${m}
-    <button class="btn btn-sm btn-outline-danger" onclick="deleteMember(${i})">🗑</button>
-  </li>`).join("");
-
+    <li class="list-group-item d-flex justify-content-between">
+      ${m}
+      <button class="btn btn-sm btn-outline-danger" onclick="deleteMember(${i})">🗑</button>
+    </li>`).join("");
   paidBy.innerHTML=members.map(m=>`<option>${m}</option>`).join("");
 
   customMembers.innerHTML=members.map(m=>`
-  <label class="d-flex gap-2 mb-2">
-    <input class="form-check-input split-member" type="checkbox" value="${m}">
-    <span>${m}</span>
-    <input type="number" class="form-control form-control-sm ms-auto split-amount"
-           data-member="${m}" placeholder="₹" style="max-width:100px" disabled>
-  </label>`).join("");
+    <label class="d-flex align-items-center gap-2 mb-2">
+      <input type="checkbox" class="split-member" value="${m}">
+      <span>${m}</span>
+      <input type="number" class="form-control form-control-sm ms-auto split-amount"
+        data-member="${m}" placeholder="₹" style="max-width:90px" disabled>
+    </label>`).join("");
 
   document.querySelectorAll(".split-member").forEach(cb=>{
     cb.onchange=()=>{
-      let ip=document.querySelector(`.split-amount[data-member="${cb.value}"]`);
+      const ip=document.querySelector(`.split-amount[data-member="${cb.value}"]`);
       ip.disabled=!cb.checked;
       if(!cb.checked)ip.value="";
     };
   });
 }
 
-/* ===== SPLIT ===== */
+/* ================= SPLIT ================= */
 function selectSplit(t){
   document.getElementById(t==="equal"?"splitEqual":"splitCustom").checked=true;
-  toggleSplit();
-}
-function toggleSplit(){
-  customMembers.classList.toggle("show",splitCustom.checked);
+  customMembers.classList.toggle("show",t==="custom");
 }
 
-/* ===== TYPE FIELDS ===== */
+/* ================= EXPENSE TYPE FIELDS ================= */
 function renderTypeFields(){
   const t=expenseType.value;
-  const today=new Date().toISOString().split("T")[0];
+  const d=new Date().toISOString().split("T")[0];
   typeFields.innerHTML="";
   if(!t)return;
 
-  typeFields.innerHTML=`<input class="form-control mb-2" id="desc" placeholder="Details">
-                        <input type="date" class="form-control mb-2" id="date" value="${today}">`;
+  if(t==="Travel"){
+    typeFields.innerHTML=`
+      <select class="form-select mb-2" id="travelMode">
+        <option>Bus</option><option>Train</option>
+        <option>Flight</option><option>Car</option>
+        <option value="Other">Other</option>
+      </select>
+      <input class="form-control mb-2 d-none" id="travelOther" placeholder="Other transport">
+      <input class="form-control mb-2" id="fromPlace" placeholder="From">
+      <input class="form-control mb-2" id="toPlace" placeholder="To">
+      <input type="date" class="form-control mb-2" id="travelDate" value="${d}">
+    `;
+    travelMode.onchange=()=>travelOther.classList.toggle("d-none",travelMode.value!=="Other");
+  }
+  if(t==="Food"){
+    typeFields.innerHTML=`
+      <input class="form-control mb-2" id="foodPlace" placeholder="Place">
+      <select class="form-select mb-2" id="foodType">
+        <option>Breakfast</option><option>Lunch</option>
+        <option>Dinner</option><option>Snacks</option>
+        <option value="Other">Other</option>
+      </select>
+      <input class="form-control mb-2 d-none" id="foodOther" placeholder="Other food">
+      <input type="date" class="form-control mb-2" id="foodDate" value="${d}">
+    `;
+    foodType.onchange=()=>foodOther.classList.toggle("d-none",foodType.value!=="Other");
+  }
+  if(t==="Other"){
+    typeFields.innerHTML=`
+      <input class="form-control mb-2" id="otherText" placeholder="Description">
+      <input class="form-control mb-2" id="otherPlace" placeholder="Place">
+      <input type="date" class="form-control mb-2" id="otherDate" value="${d}">
+    `;
+  }
 }
 
-/* ===== SAVE EXPENSE ===== */
+/* ================= EXPENSE CRUD ================= */
 function saveExpense(){
-  let amt=+expenseAmount.value;
-  let paid=paidBy.value;
-  let type=expenseType.value;
-  let details=document.getElementById("desc")?.value;
-  if(!amt||!paid||!type||!details){alert("Fill all fields");return;}
+  const amount=+expenseAmount.value;
+  if(!amount||!paidBy.value||!expenseType.value)return alert("Fill all fields");
+
+  let details="";
+  if(expenseType.value==="Travel")
+    details=`${travelMode.value} | ${fromPlace.value} → ${toPlace.value} | ${travelDate.value}`;
+  if(expenseType.value==="Food")
+    details=`${foodPlace.value} | ${foodType.value} | ${foodDate.value}`;
+  if(expenseType.value==="Other")
+    details=`${otherText.value} | ${otherPlace.value} | ${otherDate.value}`;
 
   let splits=[];
   if(splitEqual.checked){
-    let s=amt/members.length;
+    const s=amount/members.length;
     members.forEach(m=>splits.push({member:m,amount:s}));
   }else{
     document.querySelectorAll(".split-member:checked").forEach(cb=>{
-      let v=+document.querySelector(`.split-amount[data-member="${cb.value}"]`).value;
+      const v=+document.querySelector(`.split-amount[data-member="${cb.value}"]`).value;
       if(v>0)splits.push({member:cb.value,amount:v});
     });
-  }
+    }
 
-  let obj={paidBy:paid,amount:amt,type,details,splits};
+  const obj={paidBy:paidBy.value,amount,type:expenseType.value,details,splits};
   if(editIndex>-1)expenses[editIndex]=obj;
   else expenses.push(obj);
 
-  editIndex=-1;
-  resetForm();
+  cancelEdit();
   rebuildAll();
 }
 
 function editExpense(i){
+  const e=expenses[i];
   editIndex=i;
-  let e=expenses[i];
+  expenseFormTitle.innerText="Edit Expense";
+  cancelEditBtn.classList.remove("d-none");
   expenseType.value=e.type;
   renderTypeFields();
   expenseAmount.value=e.amount;
   paidBy.value=e.paidBy;
-  document.getElementById("desc").value=e.details;
-
-  if(e.splits.length===members.length)selectSplit("equal");
-  else{
-    selectSplit("custom");
-    e.splits.forEach(s=>{
-      let cb=document.querySelector(`.split-member[value="${s.member}"]`);
-      let ip=document.querySelector(`.split-amount[data-member="${s.member}"]`);
-      if(cb&&ip){cb.checked=true;ip.disabled=false;ip.value=s.amount;}
-    });
-  }
-
-  expenseFormTitle.innerText="Edit Expense";
-  cancelEditBtn.classList.remove("d-none");
 }
+
+function deleteExpense(i){
+  if(confirm("Delete expense?")){
+    expenses.splice(i,1);
+    rebuildAll();
+  }
+}
+
 function cancelEdit(){
   editIndex=-1;
-  resetForm();
-}
-function resetForm(){
+  expenseFormTitle.innerText="Add Expense";
+  cancelEditBtn.classList.add("d-none");
   expenseType.value="";
   typeFields.innerHTML="";
   expenseAmount.value="";
   splitEqual.checked=true;
-  toggleSplit();
-  expenseFormTitle.innerText="Add Expense";
-  cancelEditBtn.classList.add("d-none");
+  customMembers.classList.remove("show");
 }
 
-/* ===== OWES ===== */
+/* ================= CALC ================= */
 function initOwes(){
   owes={};
-  members.forEach(a=>{
-    owes[a]={};
-    members.forEach(b=>owes[a][b]=0);
-  });
+  members.forEach(a=>{owes[a]={};members.forEach(b=>owes[a][b]=0);});
   expenses.forEach(e=>{
     e.splits.forEach(s=>{
       if(s.member!==e.paidBy)owes[s.member][e.paidBy]+=s.amount;
     });
     members.forEach(a=>members.forEach(b=>{
-      let m=Math.min(owes[a][b],owes[b][a]);
+      const m=Math.min(owes[a][b],owes[b][a]);
       owes[a][b]-=m;owes[b][a]-=m;
     }));
   });
 }
 
-/* ===== RENDER ===== */
+/* ================= RENDER ================= */
 function renderExpenses(){
-  expenseTable.innerHTML=`<tr><th>Type</th><th>Details</th><th>Paid</th><th>₹</th><th></th></tr>`+
+  expenseTable.innerHTML=
+  `<tr><th>Type</th><th>Details</th><th>Paid</th><th>₹</th><th></th></tr>`+
   expenses.map((e,i)=>`
-  <tr>
-    <td>${e.type}</td><td>${e.details}</td>
-    <td>${e.paidBy}</td><td>${e.amount}</td>
-    <td>
-      <button class="btn btn-sm btn-outline-primary" onclick="editExpense(${i})">✏️</button>
-      <button class="btn btn-sm btn-outline-danger" onclick="expenses.splice(${i},1);rebuildAll()">🗑</button>
-    </td>
-  </tr>`).join("");
+    <tr>
+      <td>${e.type}</td>
+      <td>${e.details}</td>
+      <td>${e.paidBy}</td>
+      <td>${e.amount}</td>
+      <td>
+        <button class="btn btn-sm btn-outline-primary" onclick="editExpense(${i})">✏️</button>
+        <button class="btn btn-sm btn-outline-danger" onclick="deleteExpense(${i})">🗑</button>
+      </td>
+    </tr>`).join("");
 }
 function renderMatrix(){
   let h="";
@@ -306,8 +375,7 @@ function renderMatrix(){
     });
     if(r)h+=`<tr class="settle-header"><th colspan="3">${f} should pay</th></tr>${r}`;
   });
-  matrixTable.innerHTML=`<tr><th>From</th><th>To</th><th>₹</th></tr>`+
-    (h||"<tr><td colspan=3>No dues 🎉</td></tr>");
+  matrixTable.innerHTML=`<tr><th>From</th><th>To</th><th>₹</th></tr>`+(h||"<tr><td colspan=3>No dues 🎉</td></tr>");
 }
 function renderSpending(){
   let m={};members.forEach(x=>m[x]=0);
@@ -322,39 +390,20 @@ function renderPie(){
   pieChart=new Chart(spendPie,{
     type:"doughnut",
     data:{labels:Object.keys(m),datasets:[{data:Object.values(m)}]},
-    options:{plugins:{legend:{position:"bottom"}}}
+    options:{cutout:"70%",plugins:{legend:{position:"bottom"}}}
   });
 }
 
-/* ===== EXCEL ===== */
+/* ================= EXCEL ================= */
 function exportExcel(){
-  let wb=XLSX.utils.book_new();
+  const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(expenses),"Expenses");
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(
-    Object.entries(renderSpendMap()).map(([k,v])=>({Name:k,Spent:v}))
-  ),"Spending");
-  let settle=[];
-  members.forEach(f=>members.forEach(t=>{
-    if(f!==t&&owes[f][t]>0)settle.push({From:f,To:t,Amount:owes[f][t]});
-  }));
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(settle),"Settlement");
   XLSX.writeFile(wb,"ExpenseSplitter.xlsx");
 }
-function renderSpendMap(){
-  let m={};members.forEach(x=>m[x]=0);
-  expenses.forEach(e=>m[e.paidBy]+=e.amount);
-  return m;
-}
 
-/* ===== MAIN ===== */
+/* ================= MAIN ================= */
 function rebuildAll(){
-  save();
-  initOwes();
-  renderMembers();
-  renderExpenses();
-  renderMatrix();
-  renderSpending();
-  renderPie();
+  save(); initOwes(); renderMembers(); renderExpenses(); renderMatrix(); renderSpending(); renderPie();
 }
 function resetAll(){
   if(confirm("Clear all data?")){
@@ -364,7 +413,7 @@ function resetAll(){
   }
 }
 
-rebuildAll();
+initOwes();renderMembers();renderExpenses();renderMatrix();renderSpending();renderPie();
 </script>
 </body>
 </html>
