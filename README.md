@@ -44,7 +44,7 @@ Perfect for quick use, sharing, or GitHub Pages hosting.
 - Delete expenses
 - Cancel edit safely (no accidental overwrite)
 
----
+--- 
 
 ### 📂 Expense Types (Dynamic Forms)
 
