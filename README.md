@@ -146,9 +146,7 @@ All included directly inside **one HTML file**.
 
 ## 📁 Project Structure
 
-expense-splitter/
-│
-└── index.html
+SplitExPro/index.html
 
 
 That’s it.  
