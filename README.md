@@ -1,4 +1,4 @@
-# SplitExPro
+# <a href="https://gagan-gk.github.io/SplitExPro"> SplitExPro </a>
 # 💸 Expense Splitter (Single-File Web App)
 
 A **Splitwise-like expense splitter** built as a **single self-contained `index.html` file**.
@@ -9,8 +9,6 @@ No build tools.
 No installation.
 
 Just open the file in a browser and start using it.
-</p>
-<a href="https://gagan-gk.github.io/SplitExPro">🚀_View_Live_Demo</a>
 
 ---
 
