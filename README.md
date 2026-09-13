@@ -9,9 +9,9 @@ No build tools.
 No installation.
 
 Just open the file in a browser and start using it.
-
+</n>
 <a href="https://gagan-gk.github.io/SplitExPro">
-</n img src="https://img.shields.io/badge/🚀_View_Live_Demo-00d4ff?style=for-the-badge"/>
+<img src="https://img.shields.io/badge/🚀_View_Live_Demo-00d4ff?style=for-the-badge"/>
 </a>
 
 ---
