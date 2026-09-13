@@ -10,9 +10,7 @@ No installation.
 
 Just open the file in a browser and start using it.
 </p>
-<a href="https://gagan-gk.github.io/SplitExPro">
-<img src="https://img.shields.io/badge/🚀_View_Live_Demo-00d4ff?style=for-the-badge"/>
-</a>
+<a href="https://gagan-gk.github.io/SplitExPro">🚀_View_Live_Demo</a>
 
 ---
 
